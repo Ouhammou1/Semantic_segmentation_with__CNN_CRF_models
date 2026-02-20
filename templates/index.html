@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SegCRF — Semantic Segmentation</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
+
+<div class="app">
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo-group">
+            <div class="logo-icon">🧠</div>
+            <div>
+                <div class="logo-text">Seg<span>CRF</span></div>
+                <div class="logo-sub">Semantic Segmentation · PASCAL VOC 2012</div>
+            </div>
+        </div>
+        <div class="header-pills">
+            <span class="pill active">ResNet-50</span>
+            <span class="pill">DenseCRF</span>
+            <span class="pill">Mean-Field</span>
+            <span class="pill">Bishop §9.3</span>
+        </div>
+    </header>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-val blue">1,464</div>
+            <div class="stat-name">Training Images</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val purple">21</div>
+            <div class="stat-name">VOC Classes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val green">5</div>
+            <div class="stat-name">CRF Iterations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val orange" id="inferenceTime">--</div>
+            <div class="stat-name">Inference (ms)</div>
+        </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-area">
+
+        <!-- Input card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-dot"></div>
+                    Input Image
+                </div>
+                <div class="card-badge" id="inputBadge">No file</div>
+            </div>
+            <div class="card-body">
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" accept="image/*">
+                    <div class="dz-icon">📁</div>
+                    <div class="dz-title">Drop your image here</div>
+                    <div class="dz-sub">or <em>click to browse</em> &nbsp;·&nbsp; JPG, PNG, WEBP</div>
+                </div>
+                <div class="img-wrap">
+                    <img class="img-preview" id="inputImg" alt="Input">
+                    <div class="img-overlay">
+                        <div class="img-btn" id="changeBtn">↺ Change</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-dot purple"></div>
+                    Segmentation Output
+                </div>
+                <div class="card-badge" id="outputBadge" style="border-color:rgba(167,139,250,0.3);color:var(--accent2);background:rgba(167,139,250,0.1)">Awaiting</div>
+            </div>
+            <div class="card-body">
+                <div class="result-wrap" id="resultWrap">
+                    <div class="result-placeholder" id="resultPlaceholder">
+                        <div class="scan-line"></div>
+                        <div class="scan-corner tl"></div>
+                        <div class="scan-corner tr"></div>
+                        <div class="scan-corner bl"></div>
+                        <div class="scan-corner br"></div>
+                        <div class="ph-icon-big">⬡</div>
+                        <div class="ph-text" id="phText">Awaiting input</div>
+                        <div class="processing-dots" id="procDots" style="display:none">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <img class="img-preview" id="outputImg" alt="Output">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls panel -->
+    <div class="controls-panel">
+        <div class="controls-inner">
+            <div class="controls-left">
+                <div class="ctrl-row">
+                    <div class="ctrl-info">
+                        <div class="ctrl-name">DenseCRF Post-Processing</div>
+                        <div class="ctrl-desc">Real pydensecrf · Mean-field approximation · Bilateral + Gaussian kernels (Bishop §9.3)</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="useCrf" checked>
+                        <span class="toggle-track"></span>
+                    </label>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-info">
+                        <div class="ctrl-name">Show Original Overlay</div>
+                        <div class="ctrl-desc">Blend segmentation mask over input image for comparison</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="useOverlay">
+                        <span class="toggle-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="controls-right">
+                <button class="run-btn" id="runBtn" disabled>
+                    <span class="run-icon">▶</span> Run Segmentation
+                </button>
+                <div class="status-display" id="statusDisplay">
+                    Ready to segment
+                </div>
+                <div class="progress-wrap" id="progressWrap">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detected classes -->
+    <div class="classes-card" id="classesCard">
+        <div class="card-header">
+            <div class="card-title">
+                <div class="card-title-dot green"></div>
+                Detected Objects
+            </div>
+            <div class="card-badge" id="classCount" style="border-color:rgba(52,211,153,0.3);color:var(--accent3);background:rgba(52,211,153,0.05)">0 objects</div>
+        </div>
+        <div class="detected-grid" id="detectedGrid"></div>
+    </div>
+
+    <!-- Theory bar -->
+    <div class="theory-bar">
+        <div class="theory-label">Theory</div>
+        <span class="theory-chip">Bayesian Networks §9.1</span>
+        <span class="theory-chip">D-Separation</span>
+        <span class="theory-chip">GMM + EM Algorithm</span>
+        <span class="theory-chip">Latent Variables §9.2</span>
+        <span class="theory-chip">Markov Random Fields §9.3</span>
+        <span class="theory-chip">Gibbs Sampling</span>
+        <span class="theory-chip">DenseCRF</span>
+        <span class="theory-chip">Mean-Field Approx</span>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
