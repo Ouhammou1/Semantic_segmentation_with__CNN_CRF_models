@@ -1,0 +1,7 @@
+git clone https://github.com/lucasb-eyer/pydensecrf.git
+cd pydensecrf
+pip install -e .
+
+
+
+unzip voc.zip -d data/
